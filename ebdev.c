@@ -53,22 +53,22 @@ typedef struct _extended_blockdev_EBDev_obj_t{
 }extended_blockdev_EBDev_obj_t;
 
 mp_obj_t extended_blockdev_EBDev_make_new(const mp_obj_type_t* type, size_t n_args, size_t n_kw, const mp_obj_t* args);
-STATIC void extended_blockdev_EBDev_print(const mp_print_t* print, mp_obj_t self_in, mp_print_kind_t kind);
-STATIC mp_obj_t extended_blockdev_EBDev_readblocks(size_t n_args, const mp_obj_t* args);
-STATIC mp_obj_t extended_blockdev_EBDev_writeblocks(size_t n_args, const mp_obj_t* args);
-STATIC mp_obj_t extended_blockdev_EBDev_ioctl(mp_obj_t self_in, mp_obj_t op_in, mp_obj_t arg_in);
+static void extended_blockdev_EBDev_print(const mp_print_t* print, mp_obj_t self_in, mp_print_kind_t kind);
+static mp_obj_t extended_blockdev_EBDev_readblocks(size_t n_args, const mp_obj_t* args);
+static mp_obj_t extended_blockdev_EBDev_writeblocks(size_t n_args, const mp_obj_t* args);
+static mp_obj_t extended_blockdev_EBDev_ioctl(mp_obj_t self_in, mp_obj_t op_in, mp_obj_t arg_in);
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(extended_blockdev_EBDev_readblocks_fun_obj, 3, 4, extended_blockdev_EBDev_readblocks);
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(extended_blockdev_EBDev_writeblocks_fun_obj, 3, 4, extended_blockdev_EBDev_writeblocks);
-STATIC MP_DEFINE_CONST_FUN_OBJ_3(extended_blockdev_EBDev_ioctl_fun_obj, extended_blockdev_EBDev_ioctl);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(extended_blockdev_EBDev_readblocks_fun_obj, 3, 4, extended_blockdev_EBDev_readblocks);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(extended_blockdev_EBDev_writeblocks_fun_obj, 3, 4, extended_blockdev_EBDev_writeblocks);
+static MP_DEFINE_CONST_FUN_OBJ_3(extended_blockdev_EBDev_ioctl_fun_obj, extended_blockdev_EBDev_ioctl);
 
-STATIC const mp_rom_map_elem_t extended_blockdev_EBDev_locals_dict_table[] = {
+static const mp_rom_map_elem_t extended_blockdev_EBDev_locals_dict_table[] = {
     // class methods
     { MP_ROM_QSTR(MP_QSTR_readblocks), MP_ROM_PTR(&extended_blockdev_EBDev_readblocks_fun_obj) },
     { MP_ROM_QSTR(MP_QSTR_writeblocks), MP_ROM_PTR(&extended_blockdev_EBDev_writeblocks_fun_obj) },
     { MP_ROM_QSTR(MP_QSTR_ioctl), MP_ROM_PTR(&extended_blockdev_EBDev_ioctl_fun_obj) },
 };
-STATIC MP_DEFINE_CONST_DICT(extended_blockdev_EBDev_locals_dict, extended_blockdev_EBDev_locals_dict_table);
+static MP_DEFINE_CONST_DICT(extended_blockdev_EBDev_locals_dict, extended_blockdev_EBDev_locals_dict_table);
 
 
 MP_DEFINE_CONST_OBJ_TYPE(
@@ -163,7 +163,7 @@ mp_obj_t extended_blockdev_EBDev_make_new(const mp_obj_type_t* type,
  * Python: print(extended_blockdev.EBDev())
  * @param obj
  */
-STATIC void extended_blockdev_EBDev_print(const mp_print_t* print,
+static void extended_blockdev_EBDev_print(const mp_print_t* print,
                                           mp_obj_t self_in, mp_print_kind_t kind){
     extended_blockdev_EBDev_obj_t* self = MP_OBJ_TO_PTR(self_in);
     mp_printf(print, "EBDev(start=%d, len=%d)", self->start_block, self->block_count);
@@ -184,7 +184,7 @@ STATIC void extended_blockdev_EBDev_print(const mp_print_t* print,
  * @param buf
  * @param offset
  */
-STATIC mp_obj_t extended_blockdev_EBDev_readblocks(size_t n_args, const mp_obj_t* args){
+static mp_obj_t extended_blockdev_EBDev_readblocks(size_t n_args, const mp_obj_t* args){
     extended_blockdev_EBDev_obj_t* self = MP_OBJ_TO_PTR(args[0]);
 
     if(args[3] != mp_const_none){
@@ -221,7 +221,7 @@ STATIC mp_obj_t extended_blockdev_EBDev_readblocks(size_t n_args, const mp_obj_t
  * @param buf
  * @param offset
  */
-STATIC mp_obj_t extended_blockdev_EBDev_writeblocks(size_t n_args, const mp_obj_t* args){
+static mp_obj_t extended_blockdev_EBDev_writeblocks(size_t n_args, const mp_obj_t* args){
     extended_blockdev_EBDev_obj_t* self = MP_OBJ_TO_PTR(args[0]);
 
     if(self->writeblocks[0] == MP_OBJ_NULL){
@@ -262,7 +262,7 @@ STATIC mp_obj_t extended_blockdev_EBDev_writeblocks(size_t n_args, const mp_obj_
  * @param op
  * @param arg
  */
-STATIC mp_obj_t extended_blockdev_EBDev_ioctl(mp_obj_t self_in, mp_obj_t op_in, mp_obj_t arg_in){
+static mp_obj_t extended_blockdev_EBDev_ioctl(mp_obj_t self_in, mp_obj_t op_in, mp_obj_t arg_in){
     extended_blockdev_EBDev_obj_t* self = MP_OBJ_TO_PTR(self_in);
 
     // raises TypeError, OverflowError
@@ -282,13 +282,13 @@ STATIC mp_obj_t extended_blockdev_EBDev_ioctl(mp_obj_t self_in, mp_obj_t op_in, 
 }
 
 
-STATIC const mp_rom_map_elem_t extended_blockdev_globals_table[] = {
+static const mp_rom_map_elem_t extended_blockdev_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_extended_blockdev) },
 
     { MP_ROM_QSTR(MP_QSTR_EBDev), MP_ROM_PTR(&extended_blockdev_EBDev_type) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(
+static MP_DEFINE_CONST_DICT(
     mp_module_extended_blockdev_globals,
     extended_blockdev_globals_table
     );
