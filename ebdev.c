@@ -39,6 +39,11 @@
 
 #include <stdio.h>
 
+typedef enum{
+    CLEAN,
+    DIRTY
+}cache_state_t;
+
 typedef struct _extended_blockdev_EBDev_obj_t{
     // base represents some basic information, like type
     mp_obj_base_t base;
@@ -46,10 +51,15 @@ typedef struct _extended_blockdev_EBDev_obj_t{
     mp_obj_t bdev;
     size_t start_block;
     size_t block_count;
+    size_t block_size;
 
     mp_obj_t readblocks[4];
     mp_obj_t writeblocks[4];
     mp_obj_t ioctl[4];
+
+    cache_state_t cache_state;
+    size_t cache_block;
+    vstr_t cache;
 }extended_blockdev_EBDev_obj_t;
 
 mp_obj_t extended_blockdev_EBDev_make_new(const mp_obj_type_t* type, size_t n_args, size_t n_kw, const mp_obj_t* args);
@@ -118,6 +128,10 @@ mp_obj_t extended_blockdev_EBDev_make_new(const mp_obj_type_t* type,
 
     self->start_block = 0;
     self->block_count = blkcnt;
+    self->block_size = blksize;
+    self->cache_state = CLEAN;
+    self->cache_block = (size_t)(-1); // no block cached
+    vstr_init(&self->cache, self->block_size);
 
     if(n_args >= 2){
         // raises TypeError, OverflowError
@@ -169,6 +183,52 @@ static void extended_blockdev_EBDev_print(const mp_print_t* print,
     mp_printf(print, "EBDev(start=%d, len=%d)", self->start_block, self->block_count);
 }
 
+static int extended_blockdev_EBDev_flush(extended_blockdev_EBDev_obj_t* self){
+    if(self->cache_state == DIRTY){
+        self->writeblocks[2] = mp_obj_new_int(self->cache_block);
+        self->writeblocks[3] = mp_obj_new_bytearray_by_ref(self->block_size, self->cache.buf);
+
+        mp_obj_t ret = mp_call_method_n_kw(2, 0, self->writeblocks);
+
+        if(ret == mp_const_false){
+            return -MP_EIO;
+        }
+
+        if((ret != mp_const_true) && (ret != mp_const_none)){
+            int i = MP_OBJ_SMALL_INT_VALUE(ret);
+            if(i != 0){
+                return i > 0 ? (-MP_EINVAL) : i;
+            }
+        }
+
+        self->cache_state = CLEAN;
+    }
+
+    return 0;
+}
+
+static int extended_blockdev_EBDev_read(extended_blockdev_EBDev_obj_t* self, mp_obj_t block){
+    self->readblocks[2] = block;
+    self->readblocks[3] = mp_obj_new_bytearray_by_ref(self->block_size, self->cache.buf);
+
+    mp_obj_t ret = mp_call_method_n_kw(2, 0, self->readblocks);
+
+    if(ret == mp_const_false){
+        return -MP_EIO;
+    }
+
+    if((ret != mp_const_true) && (ret != mp_const_none)){
+        int i = MP_OBJ_SMALL_INT_VALUE(ret);
+        if(i != 0){
+            return i > 0 ? (-MP_EINVAL) : i;
+        }
+    }
+
+    self->cache_block = MP_OBJ_SMALL_INT_VALUE(block);
+
+    return 0;
+}
+
 /**
  * Python: extended_blockdev.EBDev.readblocks(self, block, buf, offset)
  *
@@ -187,23 +247,44 @@ static void extended_blockdev_EBDev_print(const mp_print_t* print,
 static mp_obj_t extended_blockdev_EBDev_readblocks(size_t n_args, const mp_obj_t* args){
     extended_blockdev_EBDev_obj_t* self = MP_OBJ_TO_PTR(args[0]);
 
-    if(args[3] != mp_const_none){
+    // raises TypeError, OverflowError
+    size_t block = mp_obj_int_get_uint_checked(args[1]);
+
+    // cache miss
+    if(block != self->cache_block){
+        if(block >= self->block_count){
+            return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+        }
+
+        int ret = extended_blockdev_EBDev_flush(self);
+        if(ret != 0){
+            return MP_OBJ_NEW_SMALL_INT(ret);
+        }
+
+        ret = extended_blockdev_EBDev_read(self, args[1]);
+        if(ret != 0){
+            return MP_OBJ_NEW_SMALL_INT(ret);
+        }
+    }
+
+    mp_uint_t offset = 0;
+    if(n_args >= 4 && args[3] != mp_const_none){
         // raises TypeError, OverflowError
-        mp_int_t offset = mp_obj_get_int(args[3]);
-        if(offset != 0){
+        offset = mp_obj_get_uint(args[3]);
+        if(offset >= self->block_size){
             return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
         }
     }
 
-    self->readblocks[2] = args[1];
-    self->readblocks[3] = args[2];
-    mp_obj_t ret = mp_call_method_n_kw(2, 0, self->readblocks);
+    mp_buffer_info_t bufinfo;
 
-    if(ret == mp_const_true){
-        return MP_OBJ_NEW_SMALL_INT(0);
-    }
+    // raises TypeError
+    mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
 
-    return MP_OBJ_NEW_SMALL_INT(-MP_EPERM);
+    size_t n = MIN(bufinfo.len, self->block_size - offset);
+    memcpy(bufinfo.buf, self->cache.buf + offset, n);
+
+    return mp_const_none;
 }
 
 /**
@@ -229,23 +310,47 @@ static mp_obj_t extended_blockdev_EBDev_writeblocks(size_t n_args, const mp_obj_
         return MP_OBJ_NEW_SMALL_INT(-MP_EROFS);
     }
 
-    if(args[3] != mp_const_none){
+    // raises TypeError, OverflowError
+    size_t block = mp_obj_int_get_uint_checked(args[1]);
+    mp_int_t offset = 0;
+
+    if(n_args >= 4 && args[3] != mp_const_none){
         // raises TypeError, OverflowError
-        mp_int_t offset = mp_obj_get_int(args[3]);
-        if(offset != 0){
+        offset = mp_obj_get_int(args[3]);
+    }
+
+    mp_buffer_info_t bufinfo;
+
+    // raises TypeError
+    mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
+
+    // cache miss
+    if(block != self->cache_block){
+        if(block >= self->block_count){
             return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+        }
+
+        int ret = extended_blockdev_EBDev_flush(self);
+        if(ret != 0){
+            return MP_OBJ_NEW_SMALL_INT(ret);
+        }
+
+        if(offset == 0 && bufinfo.len == self->block_size){
+            // we will write the entire cache block
+            // no need to read
+            self->cache_block = MP_OBJ_SMALL_INT_VALUE(args[1]);
+        }else{
+            ret = extended_blockdev_EBDev_read(self, args[1]);
+            if(ret != 0){
+                return MP_OBJ_NEW_SMALL_INT(ret);
+            }
         }
     }
 
-    self->writeblocks[2] = args[1];
-    self->writeblocks[3] = args[2];
-    mp_obj_t ret = mp_call_method_n_kw(2, 0, self->writeblocks);
+    self->cache_state = DIRTY;
+    memcpy(self->cache.buf + offset, bufinfo.buf, bufinfo.len);
 
-    if(ret == mp_const_true){
-        return MP_OBJ_NEW_SMALL_INT(0);
-    }
-
-    return MP_OBJ_NEW_SMALL_INT(-MP_EPERM);
+    return mp_const_none;
 }
 
 /**
@@ -274,6 +379,13 @@ static mp_obj_t extended_blockdev_EBDev_ioctl(mp_obj_t self_in, mp_obj_t op_in, 
 
     if(op == MP_BLOCKDEV_IOCTL_BLOCK_COUNT){
         return MP_OBJ_NEW_SMALL_INT(self->block_count);
+    }
+
+    if(op == MP_BLOCKDEV_IOCTL_SYNC){
+        int ret = extended_blockdev_EBDev_flush(self);
+        if(ret != 0){
+            return MP_OBJ_NEW_SMALL_INT(ret);
+        }
     }
 
     self->ioctl[2] = op_in;
