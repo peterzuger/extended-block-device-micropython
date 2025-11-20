@@ -281,8 +281,11 @@ static mp_obj_t extended_blockdev_EBDev_readblocks(size_t n_args, const mp_obj_t
     // raises TypeError
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
 
-    size_t n = MIN(bufinfo.len, self->block_size - offset);
-    memcpy(bufinfo.buf, self->cache.buf + offset, n);
+    if(bufinfo.len > (self->block_size - offset)){
+        return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+    }
+
+    memcpy(bufinfo.buf, self->cache.buf + offset, bufinfo.len);
 
     return mp_const_none;
 }
@@ -348,6 +351,10 @@ static mp_obj_t extended_blockdev_EBDev_writeblocks(size_t n_args, const mp_obj_
                 return MP_OBJ_NEW_SMALL_INT(ret);
             }
         }
+    }
+
+    if(bufinfo.len > (self->block_size - offset)){
+        return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
     }
 
     self->cache_state = DIRTY;
