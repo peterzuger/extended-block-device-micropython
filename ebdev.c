@@ -312,11 +312,14 @@ static mp_obj_t extended_blockdev_EBDev_writeblocks(size_t n_args, const mp_obj_
 
     // raises TypeError, OverflowError
     size_t block = mp_obj_int_get_uint_checked(args[1]);
-    mp_int_t offset = 0;
 
+    mp_uint_t offset = 0;
     if(n_args >= 4 && args[3] != mp_const_none){
         // raises TypeError, OverflowError
         offset = mp_obj_get_int(args[3]);
+        if(offset >= self->block_size){
+            return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+        }
     }
 
     mp_buffer_info_t bufinfo;
