@@ -185,7 +185,7 @@ static void extended_blockdev_EBDev_print(const mp_print_t* print,
 
 static int extended_blockdev_EBDev_flush(extended_blockdev_EBDev_obj_t* self){
     if(self->cache_state == DIRTY){
-        self->writeblocks[2] = mp_obj_new_int_from_uint(self->cache_block);
+        self->writeblocks[2] = mp_obj_new_int_from_uint(self->start_block + self->cache_block);
         self->writeblocks[3] = mp_obj_new_bytearray_by_ref(self->block_size, self->cache.buf);
 
         mp_obj_t ret = mp_call_method_n_kw(2, 0, self->writeblocks);
@@ -208,7 +208,7 @@ static int extended_blockdev_EBDev_flush(extended_blockdev_EBDev_obj_t* self){
 }
 
 static int extended_blockdev_EBDev_read(extended_blockdev_EBDev_obj_t* self, size_t block){
-    self->readblocks[2] = mp_obj_new_int_from_uint(block);
+    self->readblocks[2] = mp_obj_new_int_from_uint(self->start_block + block);
     self->readblocks[3] = mp_obj_new_bytearray_by_ref(self->block_size, self->cache.buf);
 
     mp_obj_t ret = mp_call_method_n_kw(2, 0, self->readblocks);
