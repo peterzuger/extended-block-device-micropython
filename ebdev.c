@@ -135,7 +135,7 @@ mp_obj_t extended_blockdev_EBDev_make_new(const mp_obj_type_t* type,
 
     if(n_args >= 2){
         // raises TypeError, OverflowError
-        size_t start_bytes = mp_obj_get_uint(args[1]);
+        uint64_t start_bytes = mp_obj_get_ll(args[1]);
 
         // check start is a multiple of blocksize
         if((start_bytes % blksize) != 0){
@@ -153,7 +153,7 @@ mp_obj_t extended_blockdev_EBDev_make_new(const mp_obj_type_t* type,
 
     if((n_args == 3) && (args[2] != mp_const_none)){
         // raises TypeError, OverflowError
-        size_t len_bytes = mp_obj_get_uint(args[2]);
+        uint64_t len_bytes = mp_obj_get_ll(args[2]);
 
         // check length is a multiple of blocksize
         if((len_bytes % blksize) != 0){
