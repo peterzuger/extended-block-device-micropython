@@ -195,7 +195,7 @@ static int extended_blockdev_EBDev_flush(extended_blockdev_EBDev_obj_t* self){
         }
 
         if((ret != mp_const_true) && (ret != mp_const_none)){
-            int i = mp_obj_get_int(ret);
+            int i = MP_OBJ_SMALL_INT_VALUE(ret);
             if(i != 0){
                 return i > 0 ? (-MP_EINVAL) : i;
             }
@@ -218,7 +218,7 @@ static int extended_blockdev_EBDev_read(extended_blockdev_EBDev_obj_t* self, siz
     }
 
     if((ret != mp_const_true) && (ret != mp_const_none)){
-        int i = mp_obj_get_int(ret);
+        int i = mp_obj_get_uint(ret);
         if(i != 0){
             return i > 0 ? (-MP_EINVAL) : i;
         }
@@ -319,7 +319,7 @@ static mp_obj_t extended_blockdev_EBDev_writeblocks(size_t n_args, const mp_obj_
     mp_uint_t offset = 0;
     if(n_args >= 4 && args[3] != mp_const_none){
         // raises TypeError, OverflowError
-        offset = mp_obj_get_int(args[3]);
+        offset = mp_obj_get_uint(args[3]);
         if(offset >= self->block_size){
             return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
         }
