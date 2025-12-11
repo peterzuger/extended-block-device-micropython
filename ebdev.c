@@ -287,7 +287,7 @@ static mp_obj_t extended_blockdev_EBDev_readblocks(size_t n_args, const mp_obj_t
 
     memcpy(bufinfo.buf, self->cache.buf + offset, bufinfo.len);
 
-    return mp_const_none;
+    return MP_OBJ_NEW_SMALL_INT(0);
 }
 
 /**
