@@ -282,6 +282,16 @@ static mp_obj_t extended_blockdev_EBDev_readblocks(size_t n_args, const mp_obj_t
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
 
     if(bufinfo.len > (self->block_size - offset)){
+        // if the buffer is larger than our cache we can still just call the
+        // underlying blockdevice, but only if the offset is zero.
+        if(offset == 0){
+            // still do the start_block offset
+            self->readblocks[2] = mp_obj_new_int_from_uint(self->start_block + block);
+            self->readblocks[3] = args[2];
+
+            return mp_call_method_n_kw(2, 0, self->readblocks);
+        }
+
         return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
     }
 
@@ -354,6 +364,19 @@ static mp_obj_t extended_blockdev_EBDev_writeblocks(size_t n_args, const mp_obj_
     }
 
     if(bufinfo.len > (self->block_size - offset)){
+        // if the buffer is larger than our cache we can still just call the
+        // underlying blockdevice, but only if the offset is zero.
+        if(offset == 0){
+            memcpy(self->cache.buf, bufinfo.buf, self->block_size);
+            // self->cache_state = CLEAN;
+
+            // still do the start_block offset
+            self->writeblocks[2] = mp_obj_new_int_from_uint(self->start_block + block);
+            self->writeblocks[3] = args[2];
+
+            return mp_call_method_n_kw(2, 0, self->writeblocks);
+        }
+
         return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
     }
 
