@@ -351,7 +351,7 @@ static mp_obj_t extended_blockdev_EBDev_writeblocks(size_t n_args, const mp_obj_
             return MP_OBJ_NEW_SMALL_INT(ret);
         }
 
-        if(offset == 0 && bufinfo.len == self->block_size){
+        if(offset == 0 && bufinfo.len >= self->block_size){
             // we will write the entire cache block
             // no need to read
             self->cache_block = block;
